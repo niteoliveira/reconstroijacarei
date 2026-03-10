@@ -1,17 +1,27 @@
-# reconstroijacarei
+# Reconstrói Jacareí
 
-A new Flutter project.
+Aplicativo mobile desenvolvido em Flutter para reporte de problemas urbanos em Jacareí, SP.
 
-## Getting Started
+## 📌 Sobre o Projeto
 
-This project is a starting point for a Flutter application.
+O **Reconstrói Jacareí** permite que cidadãos reportem buracos, calçadas danificadas e outros problemas diretamente no mapa da cidade. Inspirado na simplicidade do Waze, o foco é a agilidade no reporte e a visualização clara do status de cada ocorrência.
 
-A few resources to get you started if this is your first Flutter project:
+## 🚀 Plano de Implementação
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+O desenvolvimento está sendo feito de forma incremental. Você pode acompanhar o progresso detalhado no nosso:
+👉 **[Plano de Implementação](./IMPLEMENTATION_PLAN.md)**
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## 🛠️ Começando
+
+Este é um projeto Flutter. Se for seu primeiro contato com Flutter, aqui estão alguns recursos úteis:
+
+- [Documentação oficial do Flutter](https://docs.flutter.dev/)
+- [Codelabs do Flutter](https://docs.flutter.dev/get-started/codelab)
+- [Recursos de aprendizado](https://docs.flutter.dev/reference/learning-resources)
+
+Para rodar o projeto localmente:
+
+```bash
+flutter run
+```
+
