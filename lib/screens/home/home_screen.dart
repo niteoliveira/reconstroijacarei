@@ -6,6 +6,7 @@ import '../../models/problem_report.dart';
 import '../../widgets/floating_search_bar.dart';
 import 'widgets/map_view.dart';
 import 'widgets/problem_detail_sheet.dart';
+import 'widgets/report_problem_sheet.dart';
 
 /// Tela principal — Mapa com overlays estilo Waze
 /// Stack fullscreen: mapa + barra de pesquisa + FABs
@@ -125,7 +126,12 @@ class _HomeScreenState extends State<HomeScreen>
                     icon: Icons.add_rounded,
                     tooltip: 'Reportar problema',
                     onPressed: () {
-                      // Sprint 3: abrir sheet de reporte
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (_) => const ReportProblemSheet(),
+                      );
                     },
                   ),
                 ],
