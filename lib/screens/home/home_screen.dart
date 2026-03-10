@@ -7,6 +7,9 @@ import '../../widgets/floating_search_bar.dart';
 import 'widgets/map_view.dart';
 import 'widgets/problem_detail_sheet.dart';
 import 'widgets/report_problem_sheet.dart';
+import 'widgets/quick_confirm_card.dart';
+import '../../data/mock_problems.dart';
+import '../../core/constants/app_strings.dart';
 
 /// Tela principal — Mapa com overlays estilo Waze
 /// Stack fullscreen: mapa + barra de pesquisa + FABs
@@ -20,6 +23,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
   String? _selectedProblemId;
+  bool _showQuickConfirm = true;
 
   // Animation controller para o FAB
   late final AnimationController _fabAnimController;
@@ -139,11 +143,32 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ),
 
-          // ── Camada 4: Legenda de cores ─────────────────────
+          // ── Camada 4: Legenda ou QuickConfirmCard ──────────
           Positioned(
             bottom: 24,
             left: 16,
-            child: _buildLegend(),
+            right: 16,
+            child: _showQuickConfirm
+                ? QuickConfirmCard(
+                    problem: mockProblems[2], // Exemplo: Calçada Quebrada
+                    onYes: () {
+                      setState(() => _showQuickConfirm = false);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text(AppStrings.confirmationRecorded)),
+                      );
+                    },
+                    onNo: () {
+                      setState(() => _showQuickConfirm = false);
+                    },
+                    onDismiss: () {
+                      setState(() => _showQuickConfirm = false);
+                    },
+                  )
+                : Align(
+                    alignment: Alignment.bottomLeft,
+                    child: _buildLegend(),
+                  ),
           ),
         ],
       ),
