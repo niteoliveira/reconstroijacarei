@@ -192,8 +192,21 @@ class _ReportProblemSheetState extends State<ReportProblemSheet> {
                             onPressed: _selectedType != null
                                 ? () {
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(AppStrings.reportSent),
+                                      SnackBar(
+                                        content: const Row(
+                                          children: [
+                                            Icon(Icons.send_rounded,
+                                                color: Colors.white, size: 20),
+                                            SizedBox(width: 10),
+                                            Text(AppStrings.reportSent),
+                                          ],
+                                        ),
+                                        backgroundColor: AppColors.primary,
+                                        behavior: SnackBarBehavior.floating,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        margin: const EdgeInsets.all(16),
                                       ),
                                     );
                                     Navigator.of(context).pop();

@@ -10,6 +10,8 @@ import 'widgets/report_problem_sheet.dart';
 import 'widgets/quick_confirm_card.dart';
 import '../../data/mock_problems.dart';
 import '../../core/constants/app_strings.dart';
+import '../search/search_screen.dart';
+import '../profile/profile_screen.dart';
 
 /// Tela principal — Mapa com overlays estilo Waze
 /// Stack fullscreen: mapa + barra de pesquisa + FABs
@@ -21,9 +23,14 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   String? _selectedProblemId;
   bool _showQuickConfirm = true;
+
+  // Animação de entrada do QuickConfirmCard
+  late final AnimationController _quickConfirmAnimController;
+  late final Animation<Offset> _quickConfirmSlide;
+  late final Animation<double> _quickConfirmFade;
 
   // Animation controller para o FAB
   late final AnimationController _fabAnimController;
@@ -40,15 +47,38 @@ class _HomeScreenState extends State<HomeScreen>
       parent: _fabAnimController,
       curve: Curves.elasticOut,
     );
+
+    // Animação de entrada do QuickConfirmCard
+    _quickConfirmAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _quickConfirmSlide = Tween<Offset>(
+      begin: const Offset(0, 1),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _quickConfirmAnimController,
+      curve: Curves.easeOutCubic,
+    ));
+    _quickConfirmFade = CurvedAnimation(
+      parent: _quickConfirmAnimController,
+      curve: Curves.easeOut,
+    );
+
     // Dispara animação de entrada dos FABs
     Future.delayed(const Duration(milliseconds: 400), () {
       if (mounted) _fabAnimController.forward();
+    });
+    // Dispara animação de entrada do QuickConfirmCard
+    Future.delayed(const Duration(milliseconds: 700), () {
+      if (mounted) _quickConfirmAnimController.forward();
     });
   }
 
   @override
   void dispose() {
     _fabAnimController.dispose();
+    _quickConfirmAnimController.dispose();
     super.dispose();
   }
 
@@ -61,6 +91,10 @@ class _HomeScreenState extends State<HomeScreen>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      transitionAnimationController: AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 400),
+      ),
       builder: (_) => ProblemDetailSheet(problem: problem),
     ).whenComplete(() {
       setState(() {
@@ -95,10 +129,23 @@ class _HomeScreenState extends State<HomeScreen>
             right: 16,
             child: FloatingSearchBar(
               onTap: () {
-                // Sprint 5: navegar para SearchScreen
+                Navigator.of(context).push(
+                  PageRouteBuilder(
+                    pageBuilder: (context, animation, secondaryAnimation) =>
+                        const SearchScreen(),
+                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                      return FadeTransition(opacity: animation, child: child);
+                    },
+                    transitionDuration: const Duration(milliseconds: 250),
+                  ),
+                );
               },
               onAvatarTap: () {
-                // Sprint 6: navegar para ProfileScreen
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const ProfileScreen(),
+                  ),
+                );
               },
               onFilterTap: () {
                 // TODO: Implementar filtros
@@ -134,6 +181,10 @@ class _HomeScreenState extends State<HomeScreen>
                         context: context,
                         isScrollControlled: true,
                         backgroundColor: Colors.transparent,
+                        transitionAnimationController: AnimationController(
+                          vsync: this,
+                          duration: const Duration(milliseconds: 400),
+                        ),
                         builder: (_) => const ReportProblemSheet(),
                       );
                     },
@@ -149,21 +200,41 @@ class _HomeScreenState extends State<HomeScreen>
             left: 16,
             right: 16,
             child: _showQuickConfirm
-                ? QuickConfirmCard(
-                    problem: mockProblems[2], // Exemplo: Calçada Quebrada
-                    onYes: () {
-                      setState(() => _showQuickConfirm = false);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text(AppStrings.confirmationRecorded)),
-                      );
-                    },
-                    onNo: () {
-                      setState(() => _showQuickConfirm = false);
-                    },
-                    onDismiss: () {
-                      setState(() => _showQuickConfirm = false);
-                    },
+                ? SlideTransition(
+                    position: _quickConfirmSlide,
+                    child: FadeTransition(
+                      opacity: _quickConfirmFade,
+                      child: QuickConfirmCard(
+                        problem: mockProblems[2],
+                        onYes: () {
+                          setState(() => _showQuickConfirm = false);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: const Row(
+                                children: [
+                                  Icon(Icons.check_circle_rounded,
+                                      color: Colors.white, size: 20),
+                                  SizedBox(width: 10),
+                                  Text(AppStrings.confirmationRecorded),
+                                ],
+                              ),
+                              backgroundColor: AppColors.success,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              margin: const EdgeInsets.all(16),
+                            ),
+                          );
+                        },
+                        onNo: () {
+                          setState(() => _showQuickConfirm = false);
+                        },
+                        onDismiss: () {
+                          setState(() => _showQuickConfirm = false);
+                        },
+                      ),
+                    ),
                   )
                 : Align(
                     alignment: Alignment.bottomLeft,
@@ -185,9 +256,15 @@ class _HomeScreenState extends State<HomeScreen>
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: AppColors.primary.withValues(alpha: 0.4),
+            blurRadius: 16,
+            spreadRadius: 1,
+            offset: const Offset(0, 6),
+          ),
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.15),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -213,9 +290,15 @@ class _HomeScreenState extends State<HomeScreen>
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 12,
+            spreadRadius: 1,
+            offset: const Offset(0, 4),
+          ),
+          BoxShadow(
             color: AppColors.shadow,
-            blurRadius: 8,
-            offset: const Offset(0, 3),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
           ),
         ],
       ),

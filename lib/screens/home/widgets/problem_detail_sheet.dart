@@ -156,7 +156,20 @@ class ProblemDetailSheet extends StatelessWidget {
                       onPressed: () {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text(AppStrings.markedResolved),
+                            content: const Row(
+                              children: [
+                                Icon(Icons.check_circle_rounded,
+                                    color: Colors.white, size: 20),
+                                SizedBox(width: 10),
+                                Text(AppStrings.markedResolved),
+                              ],
+                            ),
+                            backgroundColor: AppColors.success,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            margin: const EdgeInsets.all(16),
                           ),
                         );
                         Navigator.of(context).pop();

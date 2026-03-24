@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import '../core/theme/app_colors.dart';
 import '../models/problem_report.dart';
 
-/// Marcador estilo Waze para o mapa
-/// Círculo colorido com ícone branco e sombra
-class MapMarker extends StatelessWidget {
+/// Marcador estilo Waze para o mapa — Sprint 7: animação de pulso ao selecionar
+/// Círculo colorido com ícone branco, sombra e micro-animações
+class MapMarker extends StatefulWidget {
   final ProblemReport problem;
   final VoidCallback? onTap;
   final bool isSelected;
@@ -17,47 +17,93 @@ class MapMarker extends StatelessWidget {
   });
 
   @override
+  State<MapMarker> createState() => _MapMarkerState();
+}
+
+class _MapMarkerState extends State<MapMarker>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulseController;
+  late final Animation<double> _pulseAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+    _pulseAnim = Tween<double>(begin: 1.0, end: 1.15).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+
+    if (widget.isSelected) {
+      _pulseController.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant MapMarker oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isSelected && !oldWidget.isSelected) {
+      _pulseController.repeat(reverse: true);
+    } else if (!widget.isSelected && oldWidget.isSelected) {
+      _pulseController.stop();
+      _pulseController.reset();
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final color = problem.status.color;
-    final double size = isSelected ? 48 : 40;
+    final color = widget.problem.status.color;
+    final double size = widget.isSelected ? 48 : 40;
 
     return GestureDetector(
-      onTap: onTap,
+      onTap: widget.onTap,
       child: AnimatedScale(
-        scale: isSelected ? 1.2 : 1.0,
-        duration: const Duration(milliseconds: 200),
+        scale: widget.isSelected ? 1.2 : 1.0,
+        duration: const Duration(milliseconds: 250),
         curve: Curves.easeOutCubic,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             // ── Corpo do marcador ────────────────────────────
-            Container(
-              width: size,
-              height: size,
-              decoration: BoxDecoration(
-                color: color,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: AppColors.surfaceCard,
-                  width: 3,
+            ScaleTransition(
+              scale: widget.isSelected ? _pulseAnim : const AlwaysStoppedAnimation(1.0),
+              child: Container(
+                width: size,
+                height: size,
+                decoration: BoxDecoration(
+                  color: color,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: AppColors.surfaceCard,
+                    width: 3,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: color.withValues(alpha: widget.isSelected ? 0.6 : 0.4),
+                      blurRadius: widget.isSelected ? 16 : 8,
+                      spreadRadius: widget.isSelected ? 2 : 0,
+                      offset: const Offset(0, 3),
+                    ),
+                    BoxShadow(
+                      color: AppColors.shadow,
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: color.withValues(alpha: 0.4),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
-                  ),
-                  BoxShadow(
-                    color: AppColors.shadow,
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Icon(
-                problem.type.icon,
-                color: AppColors.onPrimary,
-                size: size * 0.45,
+                child: Icon(
+                  widget.problem.type.icon,
+                  color: AppColors.onPrimary,
+                  size: size * 0.45,
+                ),
               ),
             ),
 
