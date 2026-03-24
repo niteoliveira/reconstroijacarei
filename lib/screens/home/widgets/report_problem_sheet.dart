@@ -6,9 +6,14 @@ import '../../../models/problem_report.dart';
 import '../../../widgets/bottom_sheet_handle.dart';
 
 /// Bottom Sheet para reportar um novo problema
-/// Abre ao tocar no FAB "+"
+/// Sprint 8: recebe endereço do location picker
 class ReportProblemSheet extends StatefulWidget {
-  const ReportProblemSheet({super.key});
+  final String initialAddress;
+
+  const ReportProblemSheet({
+    super.key,
+    this.initialAddress = 'R. Barão de Jacarehy, 200 — Centro',
+  });
 
   @override
   State<ReportProblemSheet> createState() => _ReportProblemSheetState();
@@ -83,10 +88,28 @@ class _ReportProblemSheetState extends State<ReportProblemSheet> {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                'R. Barão de Jacarehy, 200 — Centro',
+                                widget.initialAddress,
                                 style: AppTextStyles.bodyMedium,
                               ),
                             ],
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                            // Fecha o sheet → volta ao picker
+                            Navigator.of(context).pop();
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Icons.edit_location_alt_rounded,
+                              color: AppColors.primary,
+                              size: 18,
+                            ),
                           ),
                         ),
                       ],

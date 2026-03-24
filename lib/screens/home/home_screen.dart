@@ -4,17 +4,20 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../models/problem_report.dart';
 import '../../widgets/floating_search_bar.dart';
+import '../../widgets/location_pin.dart';
 import 'widgets/map_view.dart';
 import 'widgets/problem_detail_sheet.dart';
 import 'widgets/report_problem_sheet.dart';
 import 'widgets/quick_confirm_card.dart';
+import 'widgets/location_picker_card.dart';
 import '../../data/mock_problems.dart';
+import '../../data/mock_addresses.dart';
 import '../../core/constants/app_strings.dart';
 import '../search/search_screen.dart';
 import '../profile/profile_screen.dart';
 
 /// Tela principal — Mapa com overlays estilo Waze
-/// Stack fullscreen: mapa + barra de pesquisa + FABs
+/// Sprint 8: Location Picker integrado
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -27,18 +30,31 @@ class _HomeScreenState extends State<HomeScreen>
   String? _selectedProblemId;
   bool _showQuickConfirm = true;
 
-  // Animação de entrada do QuickConfirmCard
+  // ── Sprint 8: Location Picker state ────────────────────────
+  bool _isSelectingLocation = false;
+  bool _isMapDragging = false;
+  Offset _mapOffset = Offset.zero;
+  String _selectedAddress = 'R. Barão de Jacarehy, 200 — Centro';
+
+  // Animation controllers
+  late final AnimationController _fabAnimController;
+  late final Animation<double> _fabScaleAnim;
+
   late final AnimationController _quickConfirmAnimController;
   late final Animation<Offset> _quickConfirmSlide;
   late final Animation<double> _quickConfirmFade;
 
-  // Animation controller para o FAB
-  late final AnimationController _fabAnimController;
-  late final Animation<double> _fabScaleAnim;
+  // Animação de entrada/saída do location picker
+  late final AnimationController _pickerAnimController;
+  late final Animation<Offset> _pickerSlideAnim;
+  late final Animation<double> _pickerFadeAnim;
+  late final Animation<double> _pinScaleAnim;
 
   @override
   void initState() {
     super.initState();
+
+    // FAB animation
     _fabAnimController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600),
@@ -48,7 +64,7 @@ class _HomeScreenState extends State<HomeScreen>
       curve: Curves.elasticOut,
     );
 
-    // Animação de entrada do QuickConfirmCard
+    // QuickConfirm animation
     _quickConfirmAnimController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 500),
@@ -65,11 +81,31 @@ class _HomeScreenState extends State<HomeScreen>
       curve: Curves.easeOut,
     );
 
-    // Dispara animação de entrada dos FABs
+    // Location picker animation
+    _pickerAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+    _pickerSlideAnim = Tween<Offset>(
+      begin: const Offset(0, 1),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _pickerAnimController,
+      curve: Curves.easeOutCubic,
+    ));
+    _pickerFadeAnim = CurvedAnimation(
+      parent: _pickerAnimController,
+      curve: Curves.easeOut,
+    );
+    _pinScaleAnim = CurvedAnimation(
+      parent: _pickerAnimController,
+      curve: Curves.elasticOut,
+    );
+
+    // Trigger entrance animations
     Future.delayed(const Duration(milliseconds: 400), () {
       if (mounted) _fabAnimController.forward();
     });
-    // Dispara animação de entrada do QuickConfirmCard
     Future.delayed(const Duration(milliseconds: 700), () {
       if (mounted) _quickConfirmAnimController.forward();
     });
@@ -79,8 +115,11 @@ class _HomeScreenState extends State<HomeScreen>
   void dispose() {
     _fabAnimController.dispose();
     _quickConfirmAnimController.dispose();
+    _pickerAnimController.dispose();
     super.dispose();
   }
+
+  // ── Interações ─────────────────────────────────────────────
 
   void _onMarkerTap(ProblemReport problem) {
     setState(() {
@@ -103,9 +142,85 @@ class _HomeScreenState extends State<HomeScreen>
     });
   }
 
+  void _enterLocationPicker() {
+    setState(() {
+      _isSelectingLocation = true;
+      _mapOffset = Offset.zero;
+      _selectedAddress = 'R. Barão de Jacarehy, 200 — Centro';
+    });
+    _pickerAnimController.forward();
+  }
+
+  void _exitLocationPicker() {
+    _pickerAnimController.reverse().then((_) {
+      if (mounted) {
+        setState(() {
+          _isSelectingLocation = false;
+          _isMapDragging = false;
+          _mapOffset = Offset.zero;
+        });
+      }
+    });
+  }
+
+  void _confirmLocation() {
+    _pickerAnimController.reverse().then((_) {
+      if (mounted) {
+        setState(() {
+          _isSelectingLocation = false;
+          _isMapDragging = false;
+        });
+        // Abre o formulário com o endereço selecionado
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          transitionAnimationController: AnimationController(
+            vsync: this,
+            duration: const Duration(milliseconds: 400),
+          ),
+          builder: (_) => ReportProblemSheet(
+            initialAddress: _selectedAddress,
+          ),
+        ).then((_) {
+          // Reseta o offset do mapa ao fechar o formulário
+          setState(() {
+            _mapOffset = Offset.zero;
+          });
+        });
+      }
+    });
+  }
+
+  void _onMapPanStart() {
+    setState(() => _isMapDragging = true);
+  }
+
+  void _onMapPanUpdate(Offset delta) {
+    setState(() {
+      _mapOffset += delta;
+    });
+  }
+
+  void _onMapPanEnd() {
+    setState(() => _isMapDragging = false);
+
+    // Calcula endereço baseado no offset do mapa
+    // O centro da tela é (0.5, 0.5) no espaço relativo
+    // O pan desloca o mapa, então o ponto central "real" se move inversamente
+    final size = MediaQuery.of(context).size;
+    final relX = (0.5 - _mapOffset.dx / size.width).clamp(0.0, 1.0);
+    final relY = (0.5 - _mapOffset.dy / size.height).clamp(0.0, 1.0);
+
+    setState(() {
+      _selectedAddress = getAddressForPosition(relX, relY);
+    });
+  }
+
+  // ── Build ──────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
-    // Status bar transparente para fullscreen
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -120,131 +235,210 @@ class _HomeScreenState extends State<HomeScreen>
           MapView(
             selectedProblemId: _selectedProblemId,
             onMarkerTap: _onMarkerTap,
+            isSelectionMode: _isSelectingLocation,
+            mapOffset: _mapOffset,
+            onPanStart: _onMapPanStart,
+            onPanUpdate: _onMapPanUpdate,
+            onPanEnd: _onMapPanEnd,
           ),
 
-          // ── Camada 2: Barra de pesquisa flutuante ──────────
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 12,
-            left: 16,
-            right: 16,
-            child: FloatingSearchBar(
-              onTap: () {
-                Navigator.of(context).push(
-                  PageRouteBuilder(
-                    pageBuilder: (context, animation, secondaryAnimation) =>
-                        const SearchScreen(),
-                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                      return FadeTransition(opacity: animation, child: child);
-                    },
-                    transitionDuration: const Duration(milliseconds: 250),
-                  ),
-                );
-              },
-              onAvatarTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => const ProfileScreen(),
-                  ),
-                );
-              },
-              onFilterTap: () {
-                // TODO: Implementar filtros
-              },
+          // ── Camada 2: Barra de pesquisa (oculta no picker) ─
+          if (!_isSelectingLocation)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 12,
+              left: 16,
+              right: 16,
+              child: FloatingSearchBar(
+                onTap: () {
+                  Navigator.of(context).push(
+                    PageRouteBuilder(
+                      pageBuilder: (context, animation, secondaryAnimation) =>
+                          const SearchScreen(),
+                      transitionsBuilder:
+                          (context, animation, secondaryAnimation, child) {
+                        return FadeTransition(
+                            opacity: animation, child: child);
+                      },
+                      transitionDuration: const Duration(milliseconds: 250),
+                    ),
+                  );
+                },
+                onAvatarTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const ProfileScreen(),
+                    ),
+                  );
+                },
+                onFilterTap: () {
+                  // TODO: Implementar filtros
+                },
+              ),
             ),
-          ),
 
-          // ── Camada 3: FABs (canto inferior direito) ────────
-          Positioned(
-            bottom: 24,
-            right: 16,
-            child: ScaleTransition(
-              scale: _fabScaleAnim,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // FAB de localização
-                  _buildSmallFab(
-                    icon: Icons.my_location_rounded,
-                    tooltip: 'Minha localização',
-                    onPressed: () {
-                      // TODO: Centralizar mapa na localização
-                    },
-                    heroTag: 'location_fab',
+          // ── Camada 2b: Botão voltar (visível no picker) ────
+          if (_isSelectingLocation)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 12,
+              left: 16,
+              child: FadeTransition(
+                opacity: _pickerFadeAnim,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceCard,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.12),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 12),
-                  // FAB de reportar problema
-                  _buildMainFab(
-                    icon: Icons.add_rounded,
-                    tooltip: 'Reportar problema',
-                    onPressed: () {
-                      showModalBottomSheet(
-                        context: context,
-                        isScrollControlled: true,
-                        backgroundColor: Colors.transparent,
-                        transitionAnimationController: AnimationController(
-                          vsync: this,
-                          duration: const Duration(milliseconds: 400),
+                  child: IconButton(
+                    onPressed: _exitLocationPicker,
+                    icon: const Icon(
+                      Icons.arrow_back_rounded,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+          // ── Camada 3: Pin Central (visível no picker) ──────
+          if (_isSelectingLocation)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 100),
+                child: ScaleTransition(
+                  scale: _pinScaleAnim,
+                  child: LocationPin(isDragging: _isMapDragging),
+                ),
+              ),
+            ),
+
+          // ── Camada 4: FABs (ocultos no picker) ─────────────
+          if (!_isSelectingLocation)
+            Positioned(
+              bottom: 24,
+              right: 16,
+              child: ScaleTransition(
+                scale: _fabScaleAnim,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // FAB de localização
+                    _buildSmallFab(
+                      icon: Icons.my_location_rounded,
+                      tooltip: 'Minha localização',
+                      onPressed: () {
+                        // TODO: Centralizar mapa na localização
+                      },
+                      heroTag: 'location_fab',
+                    ),
+                    const SizedBox(height: 12),
+                    // FAB de reportar problema → abre location picker
+                    _buildMainFab(
+                      icon: Icons.add_rounded,
+                      tooltip: 'Reportar problema',
+                      onPressed: _enterLocationPicker,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+          // ── Camada 5: QuickConfirmCard (oculto no picker) ──
+          if (!_isSelectingLocation)
+            Positioned(
+              bottom: 24,
+              left: 16,
+              right: 16,
+              child: _showQuickConfirm
+                  ? SlideTransition(
+                      position: _quickConfirmSlide,
+                      child: FadeTransition(
+                        opacity: _quickConfirmFade,
+                        child: QuickConfirmCard(
+                          problem: mockProblems[2],
+                          onYes: () {
+                            setState(() => _showQuickConfirm = false);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: const Row(
+                                  children: [
+                                    Icon(Icons.check_circle_rounded,
+                                        color: Colors.white, size: 20),
+                                    SizedBox(width: 10),
+                                    Text(AppStrings.confirmationRecorded),
+                                  ],
+                                ),
+                                backgroundColor: AppColors.success,
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                margin: const EdgeInsets.all(16),
+                              ),
+                            );
+                          },
+                          onNo: () {
+                            setState(() => _showQuickConfirm = false);
+                          },
+                          onDismiss: () {
+                            setState(() => _showQuickConfirm = false);
+                          },
                         ),
-                        builder: (_) => const ReportProblemSheet(),
+                      ),
+                    )
+                  : Align(
+                      alignment: Alignment.bottomLeft,
+                      child: _buildLegend(),
+                    ),
+            ),
+
+          // ── Camada 6: LocationPickerCard (visível no picker)─
+          if (_isSelectingLocation)
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: SlideTransition(
+                position: _pickerSlideAnim,
+                child: FadeTransition(
+                  opacity: _pickerFadeAnim,
+                  child: LocationPickerCard(
+                    currentAddress: _selectedAddress,
+                    isDragging: _isMapDragging,
+                    onConfirm: _confirmLocation,
+                    onSearchTap: () async {
+                      // Navega para SearchScreen; pode retornar endereço
+                      await Navigator.of(context).push(
+                        PageRouteBuilder(
+                          pageBuilder:
+                              (context, animation, secondaryAnimation) =>
+                                  const SearchScreen(),
+                          transitionsBuilder:
+                              (context, animation, secondaryAnimation, child) {
+                            return FadeTransition(
+                                opacity: animation, child: child);
+                          },
+                          transitionDuration:
+                              const Duration(milliseconds: 250),
+                        ),
                       );
                     },
                   ),
-                ],
+                ),
               ),
             ),
-          ),
-
-          // ── Camada 4: Legenda ou QuickConfirmCard ──────────
-          Positioned(
-            bottom: 24,
-            left: 16,
-            right: 16,
-            child: _showQuickConfirm
-                ? SlideTransition(
-                    position: _quickConfirmSlide,
-                    child: FadeTransition(
-                      opacity: _quickConfirmFade,
-                      child: QuickConfirmCard(
-                        problem: mockProblems[2],
-                        onYes: () {
-                          setState(() => _showQuickConfirm = false);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: const Row(
-                                children: [
-                                  Icon(Icons.check_circle_rounded,
-                                      color: Colors.white, size: 20),
-                                  SizedBox(width: 10),
-                                  Text(AppStrings.confirmationRecorded),
-                                ],
-                              ),
-                              backgroundColor: AppColors.success,
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              margin: const EdgeInsets.all(16),
-                            ),
-                          );
-                        },
-                        onNo: () {
-                          setState(() => _showQuickConfirm = false);
-                        },
-                        onDismiss: () {
-                          setState(() => _showQuickConfirm = false);
-                        },
-                      ),
-                    ),
-                  )
-                : Align(
-                    alignment: Alignment.bottomLeft,
-                    child: _buildLegend(),
-                  ),
-          ),
         ],
       ),
     );
   }
+
+  // ── Widgets auxiliares ──────────────────────────────────────
 
   Widget _buildMainFab({
     required IconData icon,

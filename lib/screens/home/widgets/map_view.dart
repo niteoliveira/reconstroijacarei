@@ -6,50 +6,75 @@ import '../../../widgets/map_marker.dart';
 
 /// Widget do mapa simulado estilo Waze
 /// Container cinza com ruas, áreas e marcadores posicionados
+/// Sprint 8: suporte a modo de seleção com pan (arrastar)
 class MapView extends StatelessWidget {
   final String? selectedProblemId;
   final ValueChanged<ProblemReport>? onMarkerTap;
+
+  // ── Sprint 8: Location Picker ──────────────────────────────
+  final bool isSelectionMode;
+  final Offset mapOffset;
+  final ValueChanged<Offset>? onPanUpdate;
+  final VoidCallback? onPanStart;
+  final VoidCallback? onPanEnd;
 
   const MapView({
     super.key,
     this.selectedProblemId,
     this.onMarkerTap,
+    this.isSelectionMode = false,
+    this.mapOffset = Offset.zero,
+    this.onPanUpdate,
+    this.onPanStart,
+    this.onPanEnd,
   });
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        return Container(
-          width: constraints.maxWidth,
-          height: constraints.maxHeight,
-          color: AppColors.mapBackground,
-          child: Stack(
-            children: [
-              // ── Fundo do mapa com ruas ───────────────────────
-              CustomPaint(
-                size: Size(constraints.maxWidth, constraints.maxHeight),
-                painter: _MapPainter(),
-              ),
-
-              // ── Marcadores ───────────────────────────────────
-              ...mockProblems.map((problem) {
-                final left =
-                    problem.relativeX * constraints.maxWidth - 20;
-                final top =
-                    problem.relativeY * constraints.maxHeight - 48;
-
-                return Positioned(
-                  left: left.clamp(0, constraints.maxWidth - 48),
-                  top: top.clamp(0, constraints.maxHeight - 56),
-                  child: MapMarker(
-                    problem: problem,
-                    isSelected: problem.id == selectedProblemId,
-                    onTap: () => onMarkerTap?.call(problem),
+        return GestureDetector(
+          // Pan só funciona em modo seleção
+          onPanStart: isSelectionMode ? (_) => onPanStart?.call() : null,
+          onPanUpdate: isSelectionMode
+              ? (details) => onPanUpdate?.call(details.delta)
+              : null,
+          onPanEnd: isSelectionMode ? (_) => onPanEnd?.call() : null,
+          child: Container(
+            width: constraints.maxWidth,
+            height: constraints.maxHeight,
+            color: AppColors.mapBackground,
+            child: Stack(
+              children: [
+                // ── Fundo do mapa com ruas (deslocável) ──────────
+                Transform.translate(
+                  offset: mapOffset,
+                  child: CustomPaint(
+                    size: Size(constraints.maxWidth, constraints.maxHeight),
+                    painter: _MapPainter(),
                   ),
-                );
-              }),
-            ],
+                ),
+
+                // ── Marcadores (ocultos em modo seleção) ─────────
+                if (!isSelectionMode)
+                  ...mockProblems.map((problem) {
+                    final left =
+                        problem.relativeX * constraints.maxWidth - 20;
+                    final top =
+                        problem.relativeY * constraints.maxHeight - 48;
+
+                    return Positioned(
+                      left: left.clamp(0, constraints.maxWidth - 48),
+                      top: top.clamp(0, constraints.maxHeight - 56),
+                      child: MapMarker(
+                        problem: problem,
+                        isSelected: problem.id == selectedProblemId,
+                        onTap: () => onMarkerTap?.call(problem),
+                      ),
+                    );
+                  }),
+              ],
+            ),
           ),
         );
       },
