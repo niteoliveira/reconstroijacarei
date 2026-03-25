@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_map/flutter_map.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../models/problem_report.dart';
@@ -16,8 +17,7 @@ import '../../core/constants/app_strings.dart';
 import '../search/search_screen.dart';
 import '../profile/profile_screen.dart';
 
-/// Tela principal — Mapa com overlays estilo Waze
-/// Sprint 8: Location Picker integrado
+/// Tela principal — Mapa real com overlays estilo Waze
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -30,10 +30,12 @@ class _HomeScreenState extends State<HomeScreen>
   String? _selectedProblemId;
   bool _showQuickConfirm = true;
 
-  // ── Sprint 8: Location Picker state ────────────────────────
+  // ── MapController do flutter_map ───────────────────────────
+  final MapController _mapController = MapController();
+
+  // ── Location Picker state ──────────────────────────────────
   bool _isSelectingLocation = false;
   bool _isMapDragging = false;
-  Offset _mapOffset = Offset.zero;
   String _selectedAddress = 'R. Barão de Jacarehy, 200 — Centro';
 
   // Animation controllers
@@ -116,6 +118,7 @@ class _HomeScreenState extends State<HomeScreen>
     _fabAnimController.dispose();
     _quickConfirmAnimController.dispose();
     _pickerAnimController.dispose();
+    _mapController.dispose();
     super.dispose();
   }
 
@@ -145,7 +148,6 @@ class _HomeScreenState extends State<HomeScreen>
   void _enterLocationPicker() {
     setState(() {
       _isSelectingLocation = true;
-      _mapOffset = Offset.zero;
       _selectedAddress = 'R. Barão de Jacarehy, 200 — Centro';
     });
     _pickerAnimController.forward();
@@ -157,7 +159,6 @@ class _HomeScreenState extends State<HomeScreen>
         setState(() {
           _isSelectingLocation = false;
           _isMapDragging = false;
-          _mapOffset = Offset.zero;
         });
       }
     });
@@ -182,39 +183,48 @@ class _HomeScreenState extends State<HomeScreen>
           builder: (_) => ReportProblemSheet(
             initialAddress: _selectedAddress,
           ),
-        ).then((_) {
-          // Reseta o offset do mapa ao fechar o formulário
-          setState(() {
-            _mapOffset = Offset.zero;
-          });
-        });
+        );
       }
     });
   }
 
-  void _onMapPanStart() {
-    setState(() => _isMapDragging = true);
-  }
+  /// Calcula um endereço mock baseado na posição central do mapa
+  void _updateAddressFromMapCenter() {
+    final center = _mapController.camera.center;
 
-  void _onMapPanUpdate(Offset delta) {
-    setState(() {
-      _mapOffset += delta;
-    });
-  }
+    // Converte a LatLng do centro do mapa para coordenadas relativas (0-1)
+    // baseado nos limites de Jacareí
+    const latMin = -23.32;
+    const latMax = -23.29;
+    const lngMin = -45.98;
+    const lngMax = -45.95;
 
-  void _onMapPanEnd() {
-    setState(() => _isMapDragging = false);
-
-    // Calcula endereço baseado no offset do mapa
-    // O centro da tela é (0.5, 0.5) no espaço relativo
-    // O pan desloca o mapa, então o ponto central "real" se move inversamente
-    final size = MediaQuery.of(context).size;
-    final relX = (0.5 - _mapOffset.dx / size.width).clamp(0.0, 1.0);
-    final relY = (0.5 - _mapOffset.dy / size.height).clamp(0.0, 1.0);
+    final relX =
+        ((center.longitude - lngMin) / (lngMax - lngMin)).clamp(0.0, 0.999);
+    final relY =
+        ((center.latitude - latMin) / (latMax - latMin)).clamp(0.0, 0.999);
 
     setState(() {
       _selectedAddress = getAddressForPosition(relX, relY);
+      _isMapDragging = false;
     });
+  }
+
+  /// Ouve eventos do mapa para controlar o estado do picker
+  void _onMapEvent(MapEvent event) {
+    if (!_isSelectingLocation) return;
+
+    if (event is MapEventMoveStart) {
+      if (!_isMapDragging) {
+        setState(() => _isMapDragging = true);
+      }
+    } else if (event is MapEventMoveEnd) {
+      _updateAddressFromMapCenter();
+    }
+  }
+
+  void _centerOnJacarei() {
+    _mapController.move(kJacareiCenter, kDefaultZoom);
   }
 
   // ── Build ──────────────────────────────────────────────────
@@ -231,15 +241,13 @@ class _HomeScreenState extends State<HomeScreen>
     return Scaffold(
       body: Stack(
         children: [
-          // ── Camada 1: Mapa ─────────────────────────────────
+          // ── Camada 1: Mapa real ─────────────────────────────
           MapView(
             selectedProblemId: _selectedProblemId,
             onMarkerTap: _onMarkerTap,
             isSelectionMode: _isSelectingLocation,
-            mapOffset: _mapOffset,
-            onPanStart: _onMapPanStart,
-            onPanUpdate: _onMapPanUpdate,
-            onPanEnd: _onMapPanEnd,
+            mapController: _mapController,
+            onMapEvent: _onMapEvent,
           ),
 
           // ── Camada 2: Barra de pesquisa (oculta no picker) ─
@@ -332,9 +340,7 @@ class _HomeScreenState extends State<HomeScreen>
                     _buildSmallFab(
                       icon: Icons.my_location_rounded,
                       tooltip: 'Minha localização',
-                      onPressed: () {
-                        // TODO: Centralizar mapa na localização
-                      },
+                      onPressed: _centerOnJacarei,
                       heroTag: 'location_fab',
                     ),
                     const SizedBox(height: 12),

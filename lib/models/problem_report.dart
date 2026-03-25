@@ -89,9 +89,13 @@ class ProblemReport {
   final DateTime reportedAt;
   final int confirmations;
 
-  /// Posição relativa no mapa mock (0.0 a 1.0)
+  /// Posição relativa no mapa mock (0.0 a 1.0) — mantido como referência
   final double relativeX;
   final double relativeY;
+
+  /// Coordenadas geográficas reais (Jacareí)
+  final double latitude;
+  final double longitude;
 
   const ProblemReport({
     required this.id,
@@ -107,5 +111,7 @@ class ProblemReport {
     required this.confirmations,
     required this.relativeX,
     required this.relativeY,
+    required this.latitude,
+    required this.longitude,
   });
 }

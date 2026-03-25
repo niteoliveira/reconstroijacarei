@@ -259,12 +259,30 @@ Após cada sprint, rodar no emulador Android com `flutter run`:
 
 ---
 
+## Sprint Real-Map — Mapa Real com Estilo Clean ✅
+
+**Objetivo:** Substituir o mapa mock (CustomPainter) por um mapa real de Jacareí mantendo a identidade visual do app.
+
+**O que foi feito:**
+- Adicionadas dependências `flutter_map` e `latlong2`
+- `ProblemReport` agora tem `latitude`/`longitude` reais de Jacareí
+- `MapView` refatorado: usa `FlutterMap` com tiles **CartoDB Positron** (estilo minimalista clean)
+- `ColorFilter.matrix` aplicado nos tiles para manter tom pastel/cinza do design original
+- `MapController` integrado no `HomeScreen` — FAB de localização centraliza em Jacareí
+- Location Picker usa eventos reais do mapa (`MapEventMoveStart`/`MapEventMoveEnd`) em vez do antigo sistema de `Offset`
+- Marcadores `MapMarker` (com animação de pulso) continuam funcionando via `MarkerLayer`
+
+**Tile Server:** `https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png` (gratuito, sem chave API)
+
+---
+
 ## O que fica para a fase seguinte (fora deste plano)
 
-- Integração com **Google Maps** real (`google_maps_flutter`)
+- ~~Integração com mapa real~~ → ✅ Implementado (Sprint Real-Map)
 - **Autenticação** (Supabase/Firebase)
 - **Banco de dados** de problemas (CRUD real)
 - **Geolocalização** do usuário (`geolocator`)
 - **Upload de fotos** no reporte
 - **Push notifications**
 - Gerenciamento de estado avançado (`Riverpod` ou `Bloc`)
+

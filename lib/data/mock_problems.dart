@@ -19,6 +19,8 @@ final List<ProblemReport> mockProblems = [
     confirmations: 23,
     relativeX: 0.35,
     relativeY: 0.42,
+    latitude: -23.3020,
+    longitude: -45.9670,
   ),
   ProblemReport(
     id: '2',
@@ -36,6 +38,8 @@ final List<ProblemReport> mockProblems = [
     confirmations: 8,
     relativeX: 0.62,
     relativeY: 0.28,
+    latitude: -23.3055,
+    longitude: -45.9620,
   ),
   ProblemReport(
     id: '3',
@@ -53,6 +57,8 @@ final List<ProblemReport> mockProblems = [
     confirmations: 15,
     relativeX: 0.78,
     relativeY: 0.65,
+    latitude: -23.3090,
+    longitude: -45.9560,
   ),
   ProblemReport(
     id: '4',
@@ -70,6 +76,8 @@ final List<ProblemReport> mockProblems = [
     confirmations: 5,
     relativeX: 0.20,
     relativeY: 0.75,
+    latitude: -23.3110,
+    longitude: -45.9720,
   ),
   ProblemReport(
     id: '5',
@@ -87,5 +95,7 @@ final List<ProblemReport> mockProblems = [
     confirmations: 31,
     relativeX: 0.50,
     relativeY: 0.52,
+    latitude: -23.3045,
+    longitude: -45.9650,
   ),
 ];
