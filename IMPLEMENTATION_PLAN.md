@@ -276,13 +276,48 @@ Após cada sprint, rodar no emulador Android com `flutter run`:
 
 ---
 
+## Sprint Pre-Backend — Preparação para integração com API ✅
+
+**Objetivo:** Fechar todos os gaps do frontend antes de implementar o backend.
+
+### Modelo completo ✅
+- `ProblemReport` com `fromJson()` / `toJson()` / `toCreateJson()` / `copyWith()`
+- Campos novos: `imageUrl`, `resolvedAt`, `resolvedBy`, `updatedAt`, `confirmedByCurrentUser`
+- `FilterState` — modelo de filtros com `matches()`
+
+### Gerenciamento de estado (Riverpod) ✅
+- `problemsProvider` com ações: `addProblem`, `markResolved`, `confirmProblem`, `denyProblem`
+- `filterProvider` com toggle de status/tipo/gravidade
+- `filteredProblemsProvider` derivado (problemas × filtros)
+- `authProvider` — stub de autenticação
+
+### UI de Filtros ✅
+- `FilterSheet` com multi-select chips + badge na FloatingSearchBar
+
+### Fluxo de busca → mapa ✅
+- SearchScreen retorna `{latitude, longitude}` via `context.pop()`
+
+### Ações com estado real ✅
+- ProblemDetailSheet e QuickConfirmCard usam provider
+- ProfileScreen lê dados do auth + stats dos providers
+
+### GoRouter ✅
+- Rotas: `/`, `/search`, `/profile`, `/problem/:id`
+- Deep link para push notifications
+
+### Testes ✅ (18 testes passando)
+- theme, providers, home, search, profile
+
+---
+
 ## O que fica para a fase seguinte (fora deste plano)
 
 - ~~Integração com mapa real~~ → ✅ Implementado (Sprint Real-Map)
+- ~~Gerenciamento de estado~~ → ✅ Implementado (Riverpod)
+- ~~Rotas nomeadas~~ → ✅ Implementado (GoRouter)
 - **Autenticação** (Supabase/Firebase)
 - **Banco de dados** de problemas (CRUD real)
 - **Geolocalização** do usuário (`geolocator`)
 - **Upload de fotos** no reporte
 - **Push notifications**
-- Gerenciamento de estado avançado (`Riverpod` ou `Bloc`)
 

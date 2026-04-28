@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../data/mock_problems.dart';
 import '../../../models/problem_report.dart';
 import '../../../widgets/map_marker.dart';
 
@@ -11,8 +10,9 @@ const LatLng kJacareiCenter = LatLng(-23.3053, -45.9658);
 const double kDefaultZoom = 15.0;
 
 /// Widget do mapa real com tiles CartoDB Positron (estilo clean)
-/// Mantém a mesma interface do mapa mock para integração transparente
 class MapView extends StatelessWidget {
+  /// Lista de problemas a exibir (já filtrada pelo provider)
+  final List<ProblemReport> problems;
   final String? selectedProblemId;
   final ValueChanged<ProblemReport>? onMarkerTap;
 
@@ -23,6 +23,7 @@ class MapView extends StatelessWidget {
 
   const MapView({
     super.key,
+    required this.problems,
     this.selectedProblemId,
     this.onMarkerTap,
     this.isSelectionMode = false,
@@ -67,7 +68,7 @@ class MapView extends StatelessWidget {
         // ── Marcadores (ocultos em modo seleção) ────────────────────
         if (!isSelectionMode)
           MarkerLayer(
-            markers: mockProblems.map((problem) {
+            markers: problems.map((problem) {
               return Marker(
                 point: LatLng(problem.latitude, problem.longitude),
                 width: 48,

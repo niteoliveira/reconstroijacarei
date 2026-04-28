@@ -1,21 +1,33 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/constants/app_strings.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/problems_provider.dart';
 
 /// Tela de Perfil — Sprint 6
 /// Avatar, nome, email, badge de contribuidor, configurações e sair
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
-  // ── Dados mock do usuário ──────────────────────────────────────────────────
-  static const String _userName = 'Leonardo Oliveira';
-  static const String _userEmail = 'leonardo@email.com';
-  static const int _reportsCount = 12;
-  static const int _confirmationsCount = 34;
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authProvider);
+    final problems = ref.watch(problemsProvider);
+
+    // Calcula stats do usuário
+    // (mock: conta problemas reportados pelo nome do user e confirmações)
+    final userName = user?.name ?? 'Usuário';
+    final userEmail = user?.email ?? '';
+    final reportsCount = problems
+        .where((p) => p.reportedBy == userName)
+        .length;
+    final confirmationsCount = problems
+        .where((p) => p.confirmedByCurrentUser)
+        .length;
+
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
@@ -23,7 +35,7 @@ class ProfileScreen extends StatelessWidget {
         elevation: 0,
         scrolledUnderElevation: 1,
         leading: IconButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () => context.pop(),
           icon: const Icon(
             Icons.arrow_back_rounded,
             color: AppColors.textPrimary,
@@ -40,7 +52,7 @@ class ProfileScreen extends StatelessWidget {
         child: Column(
           children: [
             // ── Card do usuário ──────────────────────────────────────
-            _buildUserCard(),
+            _buildUserCard(userName, userEmail),
 
             const SizedBox(height: 16),
 
@@ -50,12 +62,12 @@ class ProfileScreen extends StatelessWidget {
             const SizedBox(height: 16),
 
             // ── Estatísticas ─────────────────────────────────────────
-            _buildStatsRow(),
+            _buildStatsRow(reportsCount, confirmationsCount),
 
             const SizedBox(height: 24),
 
             // ── Menu de opções ───────────────────────────────────────
-            _buildMenuSection(context),
+            _buildMenuSection(context, ref),
 
             const SizedBox(height: 32),
 
@@ -69,7 +81,7 @@ class ProfileScreen extends StatelessWidget {
 
   // ── Card principal do usuário ──────────────────────────────────────────────
 
-  Widget _buildUserCard() {
+  Widget _buildUserCard(String name, String email) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(24),
@@ -105,7 +117,7 @@ class ProfileScreen extends StatelessWidget {
 
           // Nome
           Text(
-            _userName,
+            name,
             style: AppTextStyles.heading2,
           ),
 
@@ -113,7 +125,7 @@ class ProfileScreen extends StatelessWidget {
 
           // Email
           Text(
-            _userEmail,
+            email,
             style: AppTextStyles.bodyMedium.copyWith(
               color: AppColors.textSecondary,
             ),
@@ -180,7 +192,7 @@ class ProfileScreen extends StatelessWidget {
 
   // ── Estatísticas ───────────────────────────────────────────────────────────
 
-  Widget _buildStatsRow() {
+  Widget _buildStatsRow(int reports, int confirmations) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.symmetric(vertical: 20),
@@ -200,7 +212,7 @@ class ProfileScreen extends StatelessWidget {
           Expanded(
             child: _buildStatItem(
               icon: Icons.flag_rounded,
-              value: '$_reportsCount',
+              value: '$reports',
               label: 'Reportes',
               color: AppColors.statusActive,
             ),
@@ -213,7 +225,7 @@ class ProfileScreen extends StatelessWidget {
           Expanded(
             child: _buildStatItem(
               icon: Icons.check_circle_rounded,
-              value: '$_confirmationsCount',
+              value: '$confirmations',
               label: 'Confirmações',
               color: AppColors.statusResolved,
             ),
@@ -248,7 +260,7 @@ class ProfileScreen extends StatelessWidget {
 
   // ── Menu de opções ─────────────────────────────────────────────────────────
 
-  Widget _buildMenuSection(BuildContext context) {
+  Widget _buildMenuSection(BuildContext context, WidgetRef ref) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
@@ -268,7 +280,10 @@ class ProfileScreen extends StatelessWidget {
             icon: Icons.settings_rounded,
             label: AppStrings.settings,
             onTap: () {
-              // TODO: navegar para configurações
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                    content: Text('Configurações em breve')),
+              );
             },
           ),
           const Divider(height: 1, indent: 56, color: AppColors.divider),
@@ -276,7 +291,9 @@ class ProfileScreen extends StatelessWidget {
             icon: Icons.help_outline_rounded,
             label: 'Ajuda',
             onTap: () {
-              // TODO: navegar para ajuda
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Ajuda em breve')),
+              );
             },
           ),
           const Divider(height: 1, indent: 56, color: AppColors.divider),
@@ -285,7 +302,7 @@ class ProfileScreen extends StatelessWidget {
             label: AppStrings.logout,
             color: AppColors.error,
             onTap: () {
-              _showLogoutDialog(context);
+              _showLogoutDialog(context, ref);
             },
           ),
         ],
@@ -333,7 +350,7 @@ class ProfileScreen extends StatelessWidget {
 
   // ── Diálogo de logout ──────────────────────────────────────────────────────
 
-  void _showLogoutDialog(BuildContext context) {
+  void _showLogoutDialog(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -358,10 +375,11 @@ class ProfileScreen extends StatelessWidget {
           TextButton(
             onPressed: () {
               Navigator.of(ctx).pop();
-              // TODO: implementar logout real
+              ref.read(authProvider.notifier).logout();
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Logout simulado')),
+                const SnackBar(content: Text('Logout realizado')),
               );
+              context.go('/');
             },
             child: Text(
               AppStrings.logout,

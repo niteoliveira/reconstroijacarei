@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/constants/app_strings.dart';
@@ -21,11 +22,27 @@ class _SearchScreenState extends State<SearchScreen>
   late final Animation<double> _fadeAnim;
 
   // ── Dados mock de buscas recentes ──────────────────────────────────────────
-  final List<String> _recentSearches = [
-    'Rua Alfredo Bueno, 155',
-    'Praça dos Três Poderes',
-    'Av. Major Acácio',
-    'Buraco na Rua 7 de Setembro',
+  final List<_SearchItem> _recentSearches = [
+    _SearchItem(
+      address: 'Rua Alfredo Bueno, 155',
+      latitude: -23.3040,
+      longitude: -45.9660,
+    ),
+    _SearchItem(
+      address: 'Praça dos Três Poderes',
+      latitude: -23.3060,
+      longitude: -45.9640,
+    ),
+    _SearchItem(
+      address: 'Av. Major Acácio',
+      latitude: -23.3080,
+      longitude: -45.9700,
+    ),
+    _SearchItem(
+      address: 'Buraco na Rua 7 de Setembro',
+      latitude: -23.3030,
+      longitude: -45.9680,
+    ),
   ];
 
   // ── Dados mock de sugestões ────────────────────────────────────────────────
@@ -33,27 +50,37 @@ class _SearchScreenState extends State<SearchScreen>
     _SuggestionItem(
       address: 'Rua Alfredo Bueno, 250',
       neighborhood: 'Centro, Jacareí - SP',
+      latitude: -23.3042,
+      longitude: -45.9662,
     ),
     _SuggestionItem(
       address: 'Av. Presidente Vargas, 1200',
       neighborhood: 'Jardim Paraíso, Jacareí - SP',
+      latitude: -23.3070,
+      longitude: -45.9590,
     ),
     _SuggestionItem(
       address: 'Rua Barão de Jacareí, 48',
       neighborhood: 'Vila Maria, Jacareí - SP',
+      latitude: -23.3055,
+      longitude: -45.9620,
     ),
     _SuggestionItem(
       address: 'Praça Conselheiro Rodrigues Alves',
       neighborhood: 'Centro, Jacareí - SP',
+      latitude: -23.3050,
+      longitude: -45.9650,
     ),
     _SuggestionItem(
       address: 'Rua São João, 310',
       neighborhood: 'Jardim das Flores, Jacareí - SP',
+      latitude: -23.3100,
+      longitude: -45.9580,
     ),
   ];
 
   // Resultados filtrados com base no texto digitado
-  List<String> _filteredRecent = [];
+  List<_SearchItem> _filteredRecent = [];
   List<_SuggestionItem> _filteredSuggestions = [];
 
   @override
@@ -92,7 +119,7 @@ class _SearchScreenState extends State<SearchScreen>
         _filteredSuggestions = List.from(_suggestions);
       } else {
         _filteredRecent = _recentSearches
-            .where((s) => s.toLowerCase().contains(query))
+            .where((s) => s.address.toLowerCase().contains(query))
             .toList();
         _filteredSuggestions = _suggestions
             .where((s) =>
@@ -100,6 +127,17 @@ class _SearchScreenState extends State<SearchScreen>
                 s.neighborhood.toLowerCase().contains(query))
             .toList();
       }
+    });
+  }
+
+  /// Retorna coordenadas para o mapa e fecha a tela
+  void _selectLocation({
+    required double latitude,
+    required double longitude,
+  }) {
+    context.pop<Map<String, dynamic>>({
+      'latitude': latitude,
+      'longitude': longitude,
     });
   }
 
@@ -179,7 +217,7 @@ class _SearchScreenState extends State<SearchScreen>
         children: [
           // Botão voltar
           IconButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => context.pop(),
             icon: const Icon(
               Icons.arrow_back_rounded,
               color: AppColors.textPrimary,
@@ -253,14 +291,14 @@ class _SearchScreenState extends State<SearchScreen>
 
   // ── Item de busca recente ──────────────────────────────────────────────────
 
-  Widget _buildRecentItem(String text) {
+  Widget _buildRecentItem(_SearchItem item) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () {
-          // TODO: Navegar de volta para o mapa com localização selecionada
-          _searchController.text = text;
-        },
+        onTap: () => _selectLocation(
+          latitude: item.latitude,
+          longitude: item.longitude,
+        ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           child: Row(
@@ -281,7 +319,7 @@ class _SearchScreenState extends State<SearchScreen>
               const SizedBox(width: 14),
               Expanded(
                 child: Text(
-                  text,
+                  item.address,
                   style: AppTextStyles.bodyMedium,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -304,10 +342,10 @@ class _SearchScreenState extends State<SearchScreen>
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () {
-          // TODO: Navegar de volta para o mapa com localização selecionada
-          _searchController.text = item.address;
-        },
+        onTap: () => _selectLocation(
+          latitude: item.latitude,
+          longitude: item.longitude,
+        ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           child: Row(
@@ -391,14 +429,30 @@ class _SearchScreenState extends State<SearchScreen>
   }
 }
 
-// ── Modelo auxiliar para sugestões ────────────────────────────────────────────
+// ── Modelos auxiliares ─────────────────────────────────────────────────────────
+
+class _SearchItem {
+  final String address;
+  final double latitude;
+  final double longitude;
+
+  const _SearchItem({
+    required this.address,
+    required this.latitude,
+    required this.longitude,
+  });
+}
 
 class _SuggestionItem {
   final String address;
   final String neighborhood;
+  final double latitude;
+  final double longitude;
 
   const _SuggestionItem({
     required this.address,
     required this.neighborhood,
+    required this.latitude,
+    required this.longitude,
   });
 }

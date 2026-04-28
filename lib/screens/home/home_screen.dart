@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:latlong2/latlong.dart' as latlong2;
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../models/problem_report.dart';
+import '../../providers/problems_provider.dart';
 import '../../widgets/floating_search_bar.dart';
 import '../../widgets/location_pin.dart';
 import 'widgets/map_view.dart';
@@ -11,24 +15,24 @@ import 'widgets/problem_detail_sheet.dart';
 import 'widgets/report_problem_sheet.dart';
 import 'widgets/quick_confirm_card.dart';
 import 'widgets/location_picker_card.dart';
-import '../../data/mock_problems.dart';
+import 'widgets/filter_sheet.dart';
 import '../../data/mock_addresses.dart';
 import '../../core/constants/app_strings.dart';
-import '../search/search_screen.dart';
-import '../profile/profile_screen.dart';
 
 /// Tela principal — Mapa real com overlays estilo Waze
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+class HomeScreen extends ConsumerStatefulWidget {
+  /// ID do problema para abrir direto (deep link)
+  final String? initialProblemId;
+
+  const HomeScreen({super.key, this.initialProblemId});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen>
+class _HomeScreenState extends ConsumerState<HomeScreen>
     with TickerProviderStateMixin {
   String? _selectedProblemId;
-  bool _showQuickConfirm = true;
 
   // ── MapController do flutter_map ───────────────────────────
   final MapController _mapController = MapController();
@@ -111,6 +115,21 @@ class _HomeScreenState extends State<HomeScreen>
     Future.delayed(const Duration(milliseconds: 700), () {
       if (mounted) _quickConfirmAnimController.forward();
     });
+
+    // Deep link: abrir problema existente
+    if (widget.initialProblemId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final problems = ref.read(problemsProvider);
+        try {
+          final problem = problems.firstWhere(
+            (p) => p.id == widget.initialProblemId,
+          );
+          _onMarkerTap(problem);
+        } catch (_) {
+          // Problema não encontrado — ignora
+        }
+      });
+    }
   }
 
   @override
@@ -137,12 +156,25 @@ class _HomeScreenState extends State<HomeScreen>
         vsync: this,
         duration: const Duration(milliseconds: 400),
       ),
-      builder: (_) => ProblemDetailSheet(problem: problem),
+      builder: (sheetContext) => ProblemDetailSheet(problem: problem),
     ).whenComplete(() {
       setState(() {
         _selectedProblemId = null;
       });
     });
+  }
+
+  void _openFilterSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      transitionAnimationController: AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 400),
+      ),
+      builder: (sheetContext) => const FilterSheet(),
+    );
   }
 
   void _enterLocationPicker() {
@@ -192,8 +224,6 @@ class _HomeScreenState extends State<HomeScreen>
   void _updateAddressFromMapCenter() {
     final center = _mapController.camera.center;
 
-    // Converte a LatLng do centro do mapa para coordenadas relativas (0-1)
-    // baseado nos limites de Jacareí
     const latMin = -23.32;
     const latMax = -23.29;
     const lngMin = -45.98;
@@ -227,6 +257,14 @@ class _HomeScreenState extends State<HomeScreen>
     _mapController.move(kJacareiCenter, kDefaultZoom);
   }
 
+  /// Move o mapa para coordenadas específicas (usado pelo retorno da busca)
+  void _moveToCoordinates(double lat, double lng) {
+    _mapController.move(
+      latlong2.LatLng(lat, lng),
+      16.5, // zoom mais próximo para ver o local
+    );
+  }
+
   // ── Build ──────────────────────────────────────────────────
 
   @override
@@ -238,11 +276,17 @@ class _HomeScreenState extends State<HomeScreen>
       ),
     );
 
+    final filteredProblems = ref.watch(filteredProblemsProvider);
+    final filter = ref.watch(filterProvider);
+    final problemsNotifier = ref.read(problemsProvider.notifier);
+    final nextUnconfirmed = problemsNotifier.nextUnconfirmedProblem;
+
     return Scaffold(
       body: Stack(
         children: [
           // ── Camada 1: Mapa real ─────────────────────────────
           MapView(
+            problems: filteredProblems,
             selectedProblemId: _selectedProblemId,
             onMarkerTap: _onMarkerTap,
             isSelectionMode: _isSelectingLocation,
@@ -257,30 +301,23 @@ class _HomeScreenState extends State<HomeScreen>
               left: 16,
               right: 16,
               child: FloatingSearchBar(
-                onTap: () {
-                  Navigator.of(context).push(
-                    PageRouteBuilder(
-                      pageBuilder: (context, animation, secondaryAnimation) =>
-                          const SearchScreen(),
-                      transitionsBuilder:
-                          (context, animation, secondaryAnimation, child) {
-                        return FadeTransition(
-                            opacity: animation, child: child);
-                      },
-                      transitionDuration: const Duration(milliseconds: 250),
-                    ),
+                filterCount: filter.activeCount,
+                onTap: () async {
+                  final result = await context.push<Map<String, dynamic>>(
+                    '/search',
                   );
+                  // Se voltou com coordenadas, move o mapa
+                  if (result != null && mounted) {
+                    _moveToCoordinates(
+                      result['latitude'] as double,
+                      result['longitude'] as double,
+                    );
+                  }
                 },
                 onAvatarTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => const ProfileScreen(),
-                    ),
-                  );
+                  context.push('/profile');
                 },
-                onFilterTap: () {
-                  // TODO: Implementar filtros
-                },
+                onFilterTap: _openFilterSheet,
               ),
             ),
 
@@ -361,15 +398,17 @@ class _HomeScreenState extends State<HomeScreen>
               bottom: 24,
               left: 16,
               right: 16,
-              child: _showQuickConfirm
+              child: nextUnconfirmed != null
                   ? SlideTransition(
                       position: _quickConfirmSlide,
                       child: FadeTransition(
                         opacity: _quickConfirmFade,
                         child: QuickConfirmCard(
-                          problem: mockProblems[2],
+                          problem: nextUnconfirmed,
                           onYes: () {
-                            setState(() => _showQuickConfirm = false);
+                            ref
+                                .read(problemsProvider.notifier)
+                                .confirmProblem(nextUnconfirmed.id);
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: const Row(
@@ -390,10 +429,14 @@ class _HomeScreenState extends State<HomeScreen>
                             );
                           },
                           onNo: () {
-                            setState(() => _showQuickConfirm = false);
+                            ref
+                                .read(problemsProvider.notifier)
+                                .denyProblem(nextUnconfirmed.id);
                           },
                           onDismiss: () {
-                            setState(() => _showQuickConfirm = false);
+                            ref
+                                .read(problemsProvider.notifier)
+                                .denyProblem(nextUnconfirmed.id);
                           },
                         ),
                       ),
@@ -419,21 +462,16 @@ class _HomeScreenState extends State<HomeScreen>
                     isDragging: _isMapDragging,
                     onConfirm: _confirmLocation,
                     onSearchTap: () async {
-                      // Navega para SearchScreen; pode retornar endereço
-                      await Navigator.of(context).push(
-                        PageRouteBuilder(
-                          pageBuilder:
-                              (context, animation, secondaryAnimation) =>
-                                  const SearchScreen(),
-                          transitionsBuilder:
-                              (context, animation, secondaryAnimation, child) {
-                            return FadeTransition(
-                                opacity: animation, child: child);
-                          },
-                          transitionDuration:
-                              const Duration(milliseconds: 250),
-                        ),
+                      final result =
+                          await context.push<Map<String, dynamic>>(
+                        '/search',
                       );
+                      if (result != null && mounted) {
+                        _moveToCoordinates(
+                          result['latitude'] as double,
+                          result['longitude'] as double,
+                        );
+                      }
                     },
                   ),
                 ),

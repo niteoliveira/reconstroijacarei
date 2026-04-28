@@ -4,17 +4,21 @@ import '../core/theme/app_text_styles.dart';
 import '../core/constants/app_strings.dart';
 
 /// Barra de pesquisa flutuante estilo Waze
-/// Com ícone de lupa, campo de texto (por enquanto não editável), filtro e avatar
+/// Com ícone de lupa, campo de texto, botão de filtro com badge, e avatar
 class FloatingSearchBar extends StatelessWidget {
   final VoidCallback? onTap;
   final VoidCallback? onFilterTap;
   final VoidCallback? onAvatarTap;
+
+  /// Número de filtros ativos (mostra badge se > 0)
+  final int filterCount;
 
   const FloatingSearchBar({
     super.key,
     this.onTap,
     this.onFilterTap,
     this.onAvatarTap,
+    this.filterCount = 0,
   });
 
   @override
@@ -79,21 +83,54 @@ class FloatingSearchBar extends StatelessWidget {
 
                 const SizedBox(width: 8),
 
-                // ── Filter ────────────────────────────────────
+                // ── Filter com badge ──────────────────────────
                 GestureDetector(
                   onTap: onFilterTap,
-                  child: Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.tune_rounded,
-                      color: AppColors.textSecondary,
-                      size: 18,
-                    ),
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: filterCount > 0
+                              ? AppColors.primary.withValues(alpha: 0.1)
+                              : AppColors.surface,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.tune_rounded,
+                          color: filterCount > 0
+                              ? AppColors.primary
+                              : AppColors.textSecondary,
+                          size: 18,
+                        ),
+                      ),
+                      // Badge de contagem
+                      if (filterCount > 0)
+                        Positioned(
+                          top: -2,
+                          right: -2,
+                          child: Container(
+                            width: 18,
+                            height: 18,
+                            decoration: const BoxDecoration(
+                              color: AppColors.primary,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Center(
+                              child: Text(
+                                '$filterCount',
+                                style: const TextStyle(
+                                  color: AppColors.onPrimary,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ],
