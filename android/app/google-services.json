@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "381873144862",
+    "project_id": "reconstroi-jcr",
+    "storage_bucket": "reconstroi-jcr.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:381873144862:android:de529a5b7f3defb9829a0f",
+        "android_client_info": {
+          "package_name": "com.example.reconstroijacarei"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "381873144862-onqlv4fp80514es2g2883tp1mpb88s3d.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB8y01s5FLv1xQiIqDHfdUtQxV3PdDzJb8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "381873144862-onqlv4fp80514es2g2883tp1mpb88s3d.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
