@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -56,9 +57,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   late final Animation<double> _pickerFadeAnim;
   late final Animation<double> _pinScaleAnim;
 
+    Future<void> testRead() async {
+    final snapshot = await FirebaseFirestore.instance
+        .collection('reports')
+        .get();
+
+    for (var doc in snapshot.docs) {
+      print(doc.data());
+    }
+  }
+
+  Future<void> testWrite() async {
+  await FirebaseFirestore.instance.collection('reports').add({
+    'type': 'Teste Flutter',
+    'status': 'active',
+    'confirmationsCount': 0,
+    'createdBy': 'flutter_user',
+    'createdAt': FieldValue.serverTimestamp(),
+    'location': GeoPoint(-23.30, -45.96),
+  });
+  }
+
   @override
   void initState() {
     super.initState();
+    testRead();
+    testWrite();
 
     // FAB animation
     _fabAnimController = AnimationController(
